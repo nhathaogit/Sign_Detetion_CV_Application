@@ -141,7 +141,7 @@ cv::Mat processImageForDetection(const string& imagePath, int input_size = 640) 
 }
 
 // Hàm chạy phát hiện biển báo trên ảnh
-void detect(const string& imagePath, vector<Sign>& signs) {
+void detect(const string& imagePath, vector<Sign>& signs, const AppConfig& config) {
     // Đọc ảnh gốc
     cv::Mat img = cv::imread(imagePath);
     if (img.empty()) {
@@ -150,7 +150,7 @@ void detect(const string& imagePath, vector<Sign>& signs) {
     }
 
     // Tiền xử lý ảnh
-    cv::Mat inputBlob = processImageForDetection(imagePath, INPUT_SIZE);
+    cv::Mat inputBlob = processImageForDetection(imagePath, config.detector_input_size);
     if (inputBlob.empty()) return;
 
     // Chạy mô hình phát hiện
@@ -172,7 +172,7 @@ void detect(const string& imagePath, vector<Sign>& signs) {
     for (int i = 0; i < prob.rows; i++) {
         float confidence = prob.at<float>(i, 4);
         // Bỏ qua các kết quả phát hiện có độ tin cậy < 50%
-        if (confidence < CONF_THRESHOLD) continue;
+        if (confidence < config.conf_threshold) continue;
 
         // Đây là tọa độ pixel trên ảnh letterbox 640x640
         float x_center = prob.at<float>(i, 0);
@@ -186,10 +186,10 @@ void detect(const string& imagePath, vector<Sign>& signs) {
         int x2 = int(x_center + w / 2);
         int y2 = int(y_center + h / 2);
 
-        x1 = max(0, min(x1, INPUT_SIZE - 1));
-        y1 = max(0, min(y1, INPUT_SIZE - 1));
-        x2 = max(0, min(x2, INPUT_SIZE - 1));
-        y2 = max(0, min(y2, INPUT_SIZE - 1));
+        x1 = max(0, min(x1, config.detector_input_size - 1));
+        y1 = max(0, min(y1, config.detector_input_size - 1));
+        x2 = max(0, min(x2, config.detector_input_size - 1));
+        y2 = max(0, min(y2, config.detector_input_size - 1));
 
         // Lưu tọa độ boudingbox và độ tin cậy
         // Trong boxes là tọa độ những boudingbox có độ tin cậy từ 50% trở lên 
@@ -200,7 +200,7 @@ void detect(const string& imagePath, vector<Sign>& signs) {
     // Trong boxes còn chứa các tọa độ boudingbox nằm chồng lấn lên nhau dù đã loại những cái < 50%
     // Dùng NMS để loại các boudingbox chồng lấn lên nhau
     vector<int> indices;
-    cv::dnn::NMSBoxes(boxes, confidences, CONF_THRESHOLD, 0.4, indices);
+    cv::dnn::NMSBoxes(boxes, confidences, config.conf_threshold, 0.4, indices);
 
     // Kiểm tra có phát hiện được biển báo nào không
     if (indices.empty()) {
@@ -212,10 +212,10 @@ void detect(const string& imagePath, vector<Sign>& signs) {
     }
 
     // Tính tỷ lệ scale từ letterbox về ảnh gốc
-    float scale = min((float)INPUT_SIZE / img.cols,
-        (float)INPUT_SIZE / img.rows);
-    int pad_w = (INPUT_SIZE - int(img.cols * scale)) / 2;
-    int pad_h = (INPUT_SIZE - int(img.rows * scale)) / 2;
+    float scale = min((float)config.detector_input_size / img.cols,
+        (float)config.detector_input_size / img.rows);
+    int pad_w = (config.detector_input_size - int(img.cols * scale)) / 2;
+    int pad_h = (config.detector_input_size - int(img.rows * scale)) / 2;
 
     cout << "\n=== PHAT HIEN " << indices.size() << " BIEN BAO ===" << endl;
 
@@ -248,7 +248,7 @@ void detect(const string& imagePath, vector<Sign>& signs) {
 }
 
 // Hàm tiền xử lý ảnh đầu vào cho mô hình phân loại
-cv::Mat processImageForClassification(const string& imagePath, int x1, int y1, int x2, int y2) {
+cv::Mat processImageForClassification(const string& imagePath, int x1, int y1, int x2, int y2, int classifier_input_size) {
     cv::Mat img = cv::imread(imagePath);
     if (img.empty()) return cv::Mat();
 
@@ -256,14 +256,14 @@ cv::Mat processImageForClassification(const string& imagePath, int x1, int y1, i
     int height = y2 - y1;
     cv::Mat crop_img = img(cv::Rect(x1, y1, width, height));
 
-    cv::resize(crop_img, crop_img, cv::Size(30, 30));
+    cv::resize(crop_img, crop_img, cv::Size(classifier_input_size, classifier_input_size));
 
-    cv::Mat blob = cv::dnn::blobFromImage(crop_img, 1.0 / 255.0, cv::Size(30, 30), cv::Scalar(), false, false);
+    cv::Mat blob = cv::dnn::blobFromImage(crop_img, 1.0 / 255.0, cv::Size(classifier_input_size, classifier_input_size), cv::Scalar(), false, false);
     return blob;
 }
 
 // Hàm chạy phân loại biển báo sau khi phát hiện biển báo
-void classify(const string& imagePath, vector<Sign>& signs) {
+void classify(const string& imagePath, vector<Sign>& signs, const AppConfig& config) {
     // Lặp qua danh sách lưu thông tin các biển báo được phát hiện
     for (int i = 0; i < signs.size(); i++) {
         int x1 = signs[i].x1;
@@ -272,7 +272,7 @@ void classify(const string& imagePath, vector<Sign>& signs) {
         int y2 = signs[i].y2;
 
         // Tiền xử lý ảnh (crop và tiền xử lý từng khung biển báo trên ảnh gốc)
-        cv::Mat blob = processImageForClassification(imagePath, x1, y1, x2, y2);
+        cv::Mat blob = processImageForClassification(imagePath, x1, y1, x2, y2, config.classifier_input_size);
 
         // Đưa ảnh crop quanh biển báo vào mô hình phân loại
         c_net.setInput(blob);
@@ -309,18 +309,18 @@ void classify(const string& imagePath, vector<Sign>& signs) {
 }
 
 // Hàm điều phối 2 tác vụ phát hiện và phân loại để xuất kết quả cuối cùng
-void runModels(const string& imagePath, vector<Sign>& signs) {
+void runModels(const string& imagePath, vector<Sign>& signs, const AppConfig& config) {
     cout << "Dang xuat anh ket qua" << endl;
 
     // Chạy 2 tác vụ phát hiện và phân loại để lưu thông tin từng biển báo
-    detect(imagePath, signs);
-    classify(imagePath, signs);
+    detect(imagePath, signs, config);
+    classify(imagePath, signs, config);
 
     // Đọc ảnh gốc để điều chỉnh rồi xuất ảnh kết quả
     cv::Mat img = cv::imread(imagePath);
 
     // Chiều rộng hiển thị tối đa mong muốn, thông thường ảnh có width lớn hơn height nên chỉ giới hạn width
-    const int MAX_DISPLAY_WIDTH = 1500;
+    const int MAX_DISPLAY_WIDTH = config.max_display_width;
 
     cv::Mat img_display = img.clone(); // Tạo bản sao để vẽ
     double scale_factor = 1.0;
@@ -341,7 +341,7 @@ void runModels(const string& imagePath, vector<Sign>& signs) {
         int x2 = (int)(signs[i].x2 * scale_factor);
         int y2 = (int)(signs[i].y2 * scale_factor);
 
-        if (signs[i].confidence < 80)
+        if (signs[i].confidence < config.display_conf_threshold)
         {
             continue;
         }

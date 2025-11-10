@@ -1,0 +1,17 @@
+{
+  "model_paths": {
+    "detector": "models/TS_Detector.onnx",
+    "classifier": "models/TS_Classifier.onnx"
+  },
+  "detector_config": {
+    "input_size": 640,
+    "conf_threshold": 0.5
+  },
+  "classifier_config": {
+    "input_size": 30
+  },
+  "display_config": {
+    "max_width": 1500,
+    "display_threshold_percent": 80.0
+  }
+}
