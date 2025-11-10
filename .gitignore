@@ -28,3 +28,6 @@ AutoPCH/
 # Các file thực thi và thư viện
 *.exe
 *.dll
+
+# Bỏ qua các thư viện do vcpkg tự động cài đặt
+vcpkg_installed/
