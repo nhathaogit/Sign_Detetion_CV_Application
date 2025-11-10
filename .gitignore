@@ -1,11 +1,30 @@
-# Thư mục build (có chứa file .dll, .exe...)
+# Cấu hình của Visual Studio
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# Thư mục build (chứa .exe, .dll, .obj...)
 x64/
 Debug/
 Release/
+Win32/
+Win64/
+bin/
+obj/
 
-# Các file build cụ thể
-*.dll
-*.exe
-*.obj
+# Các file cache và file build tạm
+ipch/
+AutoPCH/
+*.VC.db
+*.ipch
+*.pch
 *.pdb
 *.ilk
+*.obj
+*.tlog
+*.log
+
+# Các file thực thi và thư viện
+*.exe
+*.dll

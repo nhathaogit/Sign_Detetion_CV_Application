@@ -1,7 +1,40 @@
 ﻿#include "lib.h"
+#include <fstream>
+#include "json.hpp"
+using json = nlohmann::json;
 
 cv::dnn::Net d_net;
 cv::dnn::Net c_net;
+
+bool loadConfig(AppConfig& config, const string& config_path) {
+    ifstream f(config_path);
+    if (!f.is_open()) {
+        cerr << "Loi: Khong the mo file config.json tai: " << config_path << endl;
+        return false;
+    }
+
+    try {
+        json data = json::parse(f);
+
+        config.detector_path = data["model_paths"]["detector"];
+        config.classifier_path = data["model_paths"]["classifier"];
+
+        config.detector_input_size = data["detector_config"]["input_size"];
+        config.conf_threshold = data["detector_config"]["conf_threshold"];
+
+        config.classifier_input_size = data["classifier_config"]["input_size"];
+
+        config.max_display_width = data["display_config"]["max_width"];
+        config.display_conf_threshold = data["display_config"]["display_threshold_percent"];
+
+        cout << "Tai cau hinh thanh cong." << endl;
+        return true;
+    }
+    catch (json::exception& e) {
+        cerr << "Loi: Parse JSON that bai: " << e.what() << endl;
+        return false;
+    }
+}
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
@@ -9,13 +42,20 @@ int main() {
     // Không hiển thị log của opencv
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
+    AppConfig config;
+    if (!loadConfig(config, "config.json")) {
+        cout << "Vui long kiem tra file config.json!" << endl;
+        system("pause");
+        return -1;
+    }
+
     cout << "Dang tai mo hinh phat hien va phan loai";
-    d_net = cv::dnn::readNetFromONNX(detector_path);
-    c_net = cv::dnn::readNetFromONNX(classifier_path);
+    d_net = cv::dnn::readNetFromONNX(config.detector_path);
+    c_net = cv::dnn::readNetFromONNX(config.classifier_path);
 
     if (d_net.empty() || c_net.empty()) {
         cout << "Khong tai duoc mo hinh" << endl;
-        return false;
+        return -1;
     }
 
     string selectedFile;
@@ -37,7 +77,7 @@ int main() {
                     system("pause");
                     clearScreen();
                     signs.clear();
-                    runModels(selectedFile, signs);
+                    runModels(selectedFile, signs, config);
                 }
                 else {
                     cout << "\n[CANH BAO] File ban chon khong phai la dinh dang anh hop le!\n";
