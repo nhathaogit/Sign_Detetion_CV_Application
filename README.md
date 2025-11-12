@@ -27,6 +27,6 @@ Dự án này sử dụng **NuGet Package Restore** để tự động cài đ�
 
 6.  Hãy **Start without Debugging** để có thể tự động chạy chương trình thành công.
 
-Việc chuẩn bị môi trường (như tải về thư viện, cấu hình directory bên trong Microsoft Visual Studio) là không cần thiết, VS Studio sẽ tự động nhận diện thư viện còn thiếu nhờ **pakages.json** và tự động tải về.
+Việc chuẩn bị môi trường (như tải về thư viện, cấu hình directory bên trong Microsoft Visual Studio) là không cần thiết, VS Studio sẽ tự động nhận diện thư viện còn thiếu nhờ **pakages.config** và tự động tải về.
 
 **Lưu ý:** Lần build đầu tiên có thể mất vài phút để tải các thư viện về.
